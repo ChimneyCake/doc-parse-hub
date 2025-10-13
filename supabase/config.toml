@@ -1,1 +1,16 @@
 project_id = "lhzvqfdezdqktegkryue"
+
+[functions.ingest]
+verify_jwt = false
+
+[functions.get-extraction]
+verify_jwt = false
+
+[functions.generate-draft]
+verify_jwt = false
+
+[functions.export-draft]
+verify_jwt = false
+
+[functions.cleanup-ocr]
+verify_jwt = false
