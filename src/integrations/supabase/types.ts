@@ -14,7 +14,150 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      documents: {
+        Row: {
+          created_at: string
+          id: string
+          matter_id: string
+          path: string
+          text: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          matter_id: string
+          path: string
+          text?: string | null
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          matter_id?: string
+          path?: string
+          text?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "matters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drafts: {
+        Row: {
+          amendments: Json | null
+          arguments: Json | null
+          citations: Json | null
+          created_at: string
+          id: string
+          matter_id: string
+          outline: string | null
+          version: number
+        }
+        Insert: {
+          amendments?: Json | null
+          arguments?: Json | null
+          citations?: Json | null
+          created_at?: string
+          id?: string
+          matter_id: string
+          outline?: string | null
+          version?: number
+        }
+        Update: {
+          amendments?: Json | null
+          arguments?: Json | null
+          citations?: Json | null
+          created_at?: string
+          id?: string
+          matter_id?: string
+          outline?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drafts_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "matters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      extraction: {
+        Row: {
+          claims: Json | null
+          created_at: string
+          formalities: Json | null
+          id: string
+          matter_id: string
+          metadata: Json | null
+          prior_art: Json | null
+          rejections: Json | null
+        }
+        Insert: {
+          claims?: Json | null
+          created_at?: string
+          formalities?: Json | null
+          id?: string
+          matter_id: string
+          metadata?: Json | null
+          prior_art?: Json | null
+          rejections?: Json | null
+        }
+        Update: {
+          claims?: Json | null
+          created_at?: string
+          formalities?: Json | null
+          id?: string
+          matter_id?: string
+          metadata?: Json | null
+          prior_art?: Json | null
+          rejections?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extraction_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "matters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      matters: {
+        Row: {
+          created_at: string
+          id: string
+          jurisdiction: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          jurisdiction?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          jurisdiction?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
