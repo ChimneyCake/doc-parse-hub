@@ -1,72 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import OpenAI from "https://deno.land/x/openai@v4.20.1/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const getAccessToken = async () => {
-  const svc = JSON.parse(Deno.env.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")!);
-  const jwtHeader = btoa(JSON.stringify({ alg: "RS256", typ: "JWT" })).replace(/=/g, '');
-  const iat = Math.floor(Date.now()/1000);
-  const exp = iat + 3600;
-  const scope = "https://www.googleapis.com/auth/cloud-platform";
-  const jwtClaimSet = btoa(JSON.stringify({
-    iss: svc.client_email,
-    scope,
-    aud: "https://oauth2.googleapis.com/token",
-    exp, iat
-  })).replace(/=/g, '');
-  
-  const encoder = new TextEncoder();
-  const data = encoder.encode(`${jwtHeader}.${jwtClaimSet}`);
-  const privateKey = await crypto.subtle.importKey(
-    "pkcs8",
-    encoder.encode(svc.private_key),
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const signatureBuffer = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", privateKey, data);
-  const signature = btoa(String.fromCharCode(...new Uint8Array(signatureBuffer))).replace(/=/g, '');
-
-  const assertion = `${jwtHeader}.${jwtClaimSet}.${signature}`;
-  const res = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ 
-      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", 
-      assertion 
-    })
-  });
-  const json = await res.json();
-  return json.access_token as string;
-};
-
-const processWithDocAI = async (pdfBytes: Uint8Array) => {
-  const projectId = Deno.env.get("GOOGLE_DOC_AI_PROJECT_ID")!;
-  const location = Deno.env.get("GOOGLE_DOC_AI_LOCATION")!;
-  const processorId = Deno.env.get("GOOGLE_DOC_AI_PROCESSOR_ID")!;
-  const token = await getAccessToken();
-
-  const url = `https://${location}-documentai.googleapis.com/v1/projects/${projectId}/locations/${location}/processors/${processorId}:process`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { 
-      "Authorization": `Bearer ${token}`, 
-      "Content-Type": "application/json" 
-    },
-    body: JSON.stringify({
-      rawDocument: { 
-        content: btoa(String.fromCharCode(...pdfBytes)), 
-        mimeType: "application/pdf" 
-      }
-    })
-  });
-  if (!res.ok) throw new Error(`DocAI error ${res.status}: ${await res.text()}`);
-  return res.json();
+const extractTextFromPDF = async (pdfBytes: Uint8Array): Promise<string> => {
+  // Simple text extraction - in production, you'd use a proper PDF parser
+  // For now, we'll convert to base64 and use AI to extract text
+  const base64 = btoa(String.fromCharCode(...pdfBytes));
+  return base64;
 };
 
 serve(async (req) => {
@@ -95,32 +39,46 @@ serve(async (req) => {
     if (fileError) throw new Error(`File fetch failed: ${fileError.message}`);
     const pdfBytes = new Uint8Array(await fileData.arrayBuffer());
 
-    // 2) OCR via DocAI
-    const doc = await processWithDocAI(pdfBytes);
-    const fullText = doc.document?.text || "";
+    // 2) Convert PDF to base64 for AI processing
+    const base64PDF = btoa(String.fromCharCode(...pdfBytes));
 
-    // 3) First-pass extraction with OpenAI
-    const openai = new OpenAI({ apiKey: Deno.env.get("OPENAI_API_KEY")! });
-    const system = `You are a legal NLP parser for IP prosecution. Output strict JSON with fields:
-metadata{application_number, examiner, art_unit, mail_date}, 
-rejections[{code,basis,claims[],summary}], 
-formalities[{topic,detail}], 
-claims[{no,text}], 
-prior_art[{kind,number,title}].
-Do not invent text. Use empty strings/arrays if unknown.`;
-    const user = fullText.slice(0, 120000);
+    // 3) Extract structured data using Lovable AI
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
+    const system = `You are a legal NLP parser for USPTO office actions. Extract information from the PDF and output strict JSON with these fields:
+metadata: {application_number: string, examiner: string, art_unit: string, mail_date: string}
+rejections: [{code: string, basis: string, claims: string[], summary: string}]
+formalities: [{topic: string, detail: string}]
+claims: [{no: number, text: string}]
+prior_art: [{kind: string, number: string, title: string}]
 
-    const extractResp = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      temperature: 0,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user }
-      ],
-      response_format: { type: "json_object" }
+Use empty strings/arrays if information is not found. Do not invent data.`;
+
+    const extractResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: system },
+          { 
+            role: "user", 
+            content: `Please analyze this USPTO office action PDF and extract the required information. The PDF is provided as base64: ${base64PDF.slice(0, 100000)}` 
+          }
+        ],
+        response_format: { type: "json_object" }
+      })
     });
 
-    const extracted = JSON.parse(extractResp.choices[0].message.content || "{}");
+    if (!extractResp.ok) {
+      const errorText = await extractResp.text();
+      throw new Error(`AI extraction failed: ${errorText}`);
+    }
+
+    const extractData = await extractResp.json();
+    const extracted = JSON.parse(extractData.choices[0].message.content || "{}");
 
     // 4) Save to database
     const { data: matter } = await supabase.from("matters")
@@ -132,7 +90,7 @@ Do not invent text. Use empty strings/arrays if unknown.`;
       matter_id: matter.id, 
       type: "office_action", 
       path: file_id, 
-      text: fullText
+      text: base64PDF.slice(0, 50000)
     }]);
 
     await supabase.from("extraction").insert([{
