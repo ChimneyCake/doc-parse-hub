@@ -18,10 +18,10 @@ export default function Draft() {
     setGenerating(true);
     try {
       // First get extraction data
-      const { data: extractionData, error: extractionError } = await supabase.functions.invoke('get-extraction', {
-        method: 'GET',
-        body: { matter_id: matterId }
-      });
+      const { data: extractionData, error: extractionError } = await supabase.functions.invoke(
+        `get-extraction?matter_id=${matterId}`,
+        { method: 'GET' }
+      );
 
       if (extractionError) throw extractionError;
 

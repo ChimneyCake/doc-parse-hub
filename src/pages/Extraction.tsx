@@ -19,10 +19,10 @@ export default function Extraction() {
 
   const fetchExtraction = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('get-extraction', {
-        method: 'GET',
-        body: { matter_id: matterId }
-      });
+      const { data, error } = await supabase.functions.invoke(
+        `get-extraction?matter_id=${matterId}`,
+        { method: 'GET' }
+      );
 
       if (error) throw error;
       setExtraction(data);
