@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { Header } from "@/components/Header";
 
 export default function Extraction() {
   const { matterId } = useParams();
@@ -45,7 +46,9 @@ export default function Extraction() {
   }
 
   return (
-    <div className="container max-w-6xl mx-auto p-6 space-y-6">
+    <>
+      <Header />
+      <div className="container max-w-6xl mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Extracted Data</h1>
         <Button onClick={handleContinueToDraft}>Continue to Draft</Button>
@@ -125,5 +128,6 @@ export default function Extraction() {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }

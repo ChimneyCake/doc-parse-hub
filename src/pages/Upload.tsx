@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Upload as UploadIcon } from "lucide-react";
+import { Header } from "@/components/Header";
 
 export default function Upload() {
   const [file, setFile] = useState<File | null>(null);
@@ -58,7 +59,9 @@ export default function Upload() {
   };
 
   return (
-    <div className="container max-w-2xl mx-auto p-6">
+    <>
+      <Header />
+      <div className="container max-w-2xl mx-auto p-6">
       <Card>
         <CardHeader>
           <CardTitle>Upload Office Action</CardTitle>
@@ -110,5 +113,6 @@ export default function Upload() {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }

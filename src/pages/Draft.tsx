@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Download } from "lucide-react";
+import { Header } from "@/components/Header";
 
 export default function Draft() {
   const { matterId } = useParams();
@@ -71,7 +72,9 @@ export default function Draft() {
   };
 
   return (
-    <div className="container max-w-6xl mx-auto p-6 space-y-6">
+    <>
+      <Header />
+      <div className="container max-w-6xl mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Response Draft</h1>
         <div className="flex gap-2">
@@ -160,5 +163,6 @@ export default function Draft() {
         </div>
       )}
     </div>
+    </>
   );
 }
