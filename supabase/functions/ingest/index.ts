@@ -27,9 +27,34 @@ serve(async (req) => {
       });
     }
 
+    // Get authenticated user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      global: {
+        headers: { Authorization: authHeader }
+      }
+    });
+
+    // Get user from auth header
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      console.error("Auth error:", userError);
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    console.log("Processing file for user:", user.id);
 
     // 1) Fetch file from storage
     const { data: fileData, error: fileError } = await supabase.storage
@@ -80,9 +105,9 @@ Use empty strings/arrays if information is not found. Do not invent data.`;
     const extractData = await extractResp.json();
     const extracted = JSON.parse(extractData.choices[0].message.content || "{}");
 
-    // 4) Save to database
+    // 4) Save to database with user_id
     const { data: matter } = await supabase.from("matters")
-      .insert([{ title, jurisdiction, status: "parsed" }])
+      .insert([{ title, jurisdiction, status: "parsed", user_id: user.id }])
       .select()
       .single();
 
@@ -90,7 +115,8 @@ Use empty strings/arrays if information is not found. Do not invent data.`;
       matter_id: matter.id, 
       type: "office_action", 
       path: file_id, 
-      text: base64PDF.slice(0, 50000)
+      text: base64PDF.slice(0, 50000),
+      user_id: user.id
     }]);
 
     await supabase.from("extraction").insert([{
@@ -98,7 +124,8 @@ Use empty strings/arrays if information is not found. Do not invent data.`;
       metadata: extracted.metadata || {},
       rejections: extracted.rejections || [],
       claims: extracted.claims || [],
-      prior_art: extracted.prior_art || []
+      prior_art: extracted.prior_art || [],
+      user_id: user.id
     }]);
 
     return new Response(JSON.stringify({ 

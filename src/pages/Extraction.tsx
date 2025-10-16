@@ -14,8 +14,15 @@ export default function Extraction() {
   const [extraction, setExtraction] = useState<any>(null);
 
   useEffect(() => {
-    fetchExtraction();
-  }, [matterId]);
+    // Check authentication
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        navigate("/auth");
+      } else {
+        fetchExtraction();
+      }
+    });
+  }, [matterId, navigate]);
 
   const fetchExtraction = async () => {
     try {

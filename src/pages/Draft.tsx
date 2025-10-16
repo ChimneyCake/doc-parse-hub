@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,16 @@ export default function Draft() {
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [draft, setDraft] = useState<any>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check authentication
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        navigate("/auth");
+      }
+    });
+  }, [navigate]);
 
   const generateDraft = async () => {
     setGenerating(true);

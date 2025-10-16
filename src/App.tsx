@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Upload from "./pages/Upload";
 import Extraction from "./pages/Extraction";
 import Draft from "./pages/Draft";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -19,6 +20,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/auth" element={<Auth />} />
           <Route path="/upload" element={<Upload />} />
           <Route path="/extraction/:matterId" element={<Extraction />} />
           <Route path="/draft/:matterId" element={<Draft />} />

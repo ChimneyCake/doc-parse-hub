@@ -21,17 +21,48 @@ serve(async (req) => {
       });
     }
 
+    // Get authenticated user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      global: {
+        headers: { Authorization: authHeader }
+      }
+    });
 
-    const { data: draft } = await supabase
+    // Verify user authentication
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Get latest draft (RLS will filter by user access)
+    const { data: draft, error } = await supabase
       .from("drafts")
       .select("*")
       .eq("matter_id", matter_id)
       .order("version", { ascending: false })
       .limit(1)
       .single();
+
+    if (error) {
+      console.error("Draft query error:", error);
+      return new Response(JSON.stringify({ error: "Draft not found or access denied" }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     // Generate text format (DOCX would require additional library)
     let content = "OFFICE ACTION RESPONSE\n\n";

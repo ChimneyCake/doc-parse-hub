@@ -22,10 +22,33 @@ serve(async (req) => {
       });
     }
 
+    // Get authenticated user
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      global: {
+        headers: { Authorization: authHeader }
+      }
+    });
 
+    // Verify user authentication
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Query with RLS policies will automatically filter by user
     const { data, error } = await supabase
       .from("extraction")
       .select("*")
@@ -33,7 +56,8 @@ serve(async (req) => {
       .single();
     
     if (error) {
-      return new Response(JSON.stringify({ error: "Not found" }), {
+      console.error("Extraction query error:", error);
+      return new Response(JSON.stringify({ error: "Not found or access denied" }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });

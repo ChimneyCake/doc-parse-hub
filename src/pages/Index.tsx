@@ -1,20 +1,61 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, Upload, FileCheck, Settings } from "lucide-react";
+import { Upload, LogOut } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 const Index = () => {
   const navigate = useNavigate();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check authentication
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        navigate("/auth");
+      } else {
+        setUser(session.user);
+      }
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        navigate("/auth");
+      } else {
+        setUser(session.user);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+  };
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold mb-4">Patent Office Action Response Assistant</h1>
-            <p className="text-xl text-muted-foreground">
-              AI-powered tool for drafting patent office action responses
-            </p>
+          <div className="flex justify-between items-center mb-12">
+            <div className="text-center flex-1">
+              <h1 className="text-4xl font-bold mb-4">Patent Office Action Response Assistant</h1>
+              <p className="text-xl text-muted-foreground">
+                AI-powered tool for drafting patent office action responses
+              </p>
+            </div>
+            <Button variant="outline" onClick={handleSignOut} className="ml-4">
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6 mb-12">
@@ -36,7 +77,7 @@ const Index = () => {
             <Card className="opacity-50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
+                  <Upload className="h-5 w-5" />
                   View Matters
                 </CardTitle>
                 <CardDescription>
